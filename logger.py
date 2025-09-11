@@ -12,7 +12,7 @@ import MySQLdb
 # read tank sensors
 def read_tank_data():
     sfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sfd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sfd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     listen_address = ('0.0.0.0',52004)
     sfd.bind(listen_address)
     packet, address = sfd.recvfrom(256)
@@ -27,7 +27,7 @@ def read_weather_data():
     data_available = False
 
     sfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sfd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sfd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     listen_address = ('0.0.0.0',52003)
     sfd.bind(listen_address)
     packet, address = sfd.recvfrom(256)
