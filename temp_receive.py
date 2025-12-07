@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import socket
 import time
 import datetime
@@ -38,3 +39,5 @@ while True:
         tank_lower = float(tank_data[1])
         tank_upper = float(tank_data[2])
         print("%s upper=%dC, lower=%dC" % (timestamp.strftime("%H:%M:%S"),tank_upper,tank_lower))
+    time.sleep(10)
+    
