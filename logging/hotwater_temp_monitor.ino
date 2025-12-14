@@ -10,6 +10,8 @@
 #include <lwip/netdb.h>
 #include <sstream>
 
+// board: ESP-32 S3 supermini
+
 // Instantiate the one-wire bus for the temperature sensors
 static OneWire OneWire(ONE_WIRE_BUS) ;
 
