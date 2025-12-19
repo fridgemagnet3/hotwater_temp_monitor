@@ -9,6 +9,7 @@
 #include <lwip/sys.h>
 #include <lwip/netdb.h>
 #include <sstream>
+#include <MQTT.h>
 
 // board: ESP-32 S3 supermini
 
@@ -19,10 +20,9 @@ static OneWire OneWire(ONE_WIRE_BUS) ;
 static DallasTemperature Sensors(&OneWire);
 // no of sensors on the bus
 static int NumOfSensors ;
-
-// UDP broadcast stuff
-static int sFd = -1 ;
-static struct sockaddr_in BroadcastAddr ; 
+// MQTT client instance
+static MQTTClient MQclient;
+static WiFiClient Net;
 
 static void GetNtpTime(void)
 {
@@ -33,10 +33,21 @@ static void GetNtpTime(void)
   configTime(GmOffsetSec, DaylightOffsetSec, NTP_SERVER);
 }
 
+static void BrokerConnect(void)
+{
+  // connect to MQTT broker
+  Serial.println("Connecting to broker");
+  MQclient.begin(MQTT_BROKER,Net) ;
+  while(!MQclient.connect("hotwater-pub"))
+  {
+    delay(500);
+    Serial.print(F("."));
+  }
+}
+
 void setup() 
 {
   IPAddress LocalIp ;
-  int EnBroadcast = 1 ;
 
   // turn on status led, indicate we're alive
   pinMode(STATUS_LED, OUTPUT);
@@ -67,41 +78,27 @@ void setup()
   // fetch current time
   GetNtpTime() ;
 
-  // create the UDP socket & configure for broadcasts
-  sFd = socket(PF_INET,SOCK_DGRAM,0) ;
-  if ( sFd < 0 )
-    Serial.println("Failed to create UDP socket");
-  else
-  {
-    if ( setsockopt(sFd, SOL_SOCKET, SO_BROADCAST, (char*)&EnBroadcast, sizeof(EnBroadcast)) < 0 )
-      Serial.println("Failed set broadcast option on UDP socket");
+  BrokerConnect() ;
 
-    memset((void*)&BroadcastAddr, 0, sizeof(struct sockaddr_in));
-    BroadcastAddr.sin_family = PF_INET;
-    BroadcastAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-    BroadcastAddr.sin_port = htons(52004);
-  }
   Serial.println("Setup done");
 }
 
 void loop() 
 {
-  static unsigned long LastStatusUpdate = 0 ;
-  const unsigned long StatusUpdateInterval = 1000 ;
-  unsigned long TimeNow ;
   DeviceAddress SensorAddr ;
   std::stringstream SensorBuf ;
   time_t TimeStamp = time(NULL);
 
-  TimeNow = millis() ;
-  // blink the status LED every second to provide indication of alive
-  if ( (TimeNow - LastStatusUpdate) > StatusUpdateInterval )
+  // blink the status LED every time around the loop to indicate we're alive
+  if ( digitalRead(STATUS_LED) == LOW )
+    digitalWrite(STATUS_LED, HIGH);
+  else
+    digitalWrite(STATUS_LED, LOW);
+
+  if ( !MQclient.connected())
   {
-    LastStatusUpdate = TimeNow ;
-    if ( digitalRead(STATUS_LED) == LOW )
-      digitalWrite(STATUS_LED, HIGH);
-    else
-      digitalWrite(STATUS_LED, LOW);
+    Serial.println("Lost connection to broker, re-connecting") ;
+    BrokerConnect() ;
   }
 
   // build up sensor string for UDP packet
@@ -115,16 +112,24 @@ void loop()
     if ( Sensors.getAddress(SensorAddr,i))
     {
       float temperatureC = Sensors.getTempC(SensorAddr);
+      String TempBuf(temperatureC,1) ;
+      String TopicBuf("hotwater/temp") ;
+
+      TopicBuf+=String(i) ;
+
       Serial.printf("Sensor %d: %f ºC\n",i,temperatureC);
+
+      // publishh individual sensor readings
+      MQclient.publish(TopicBuf,TempBuf) ;
+
       // append to the sensor buffer
       SensorBuf << " " << temperatureC ;
     }
   }
   Serial.println(SensorBuf.str().c_str());
 
-  // transmit
-  if ( sendto(sFd, SensorBuf.str().c_str(), SensorBuf.str().size(), 0, (struct sockaddr*) &BroadcastAddr, sizeof(struct sockaddr_in)) < 0 )
-    Serial.println("Failed to send broadcast packet") ;
+  // publish everything, retained so we can always grab the latest
+  MQclient.publish("hotwater/data",SensorBuf.str().c_str(),true,0) ;
 
   delay(5000);
 }

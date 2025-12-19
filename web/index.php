@@ -1,29 +1,49 @@
 <?php
+    // thing to render live sensor data as a bitmap
+    require __DIR__ . '/vendor/autoload.php';
+    use PhpMqtt\Client\MqttClient;
 
-    // thing to render last set of readings as a bitmap
-    // connect to db
-    $mysqli = new mysqli("localhost", "hotwater", "mysql-password", "hotwater") ;
-    if (mysqli_connect_errno()) 
+    // callback invoked when the message is received, this does the
+    // work of generating the bitmap, then aborting the loop
+    $on_message = function ($topic, $message, $retained, $matchedWildcards)
     {
-      printf("Connect failed: %s\n", mysqli_connect_error());
-      exit();
-    }
-    // fetch last readings
-    $query = "select Timestamp, TankUpper, TankLower FROM hotwater ORDER By Id DESC LIMIT 1" ;
-    $result = $mysqli->query($query) ;
-    $row = $result->fetch_assoc();
-    // start generating the bitmap...
-    header("Content-type: image/png") ;
-    // template image
-    $im = imagecreatefrompng("cylinder.png") ;
-    // draw on the temperatures
-    $blue = imagecolorallocate($im,42,96,153);
-    $font = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf" ;
-    imagettftext($im,18,0,400,278,$blue,$font, $row['TankUpper'] . " ºC") ;
-    imagettftext($im,18,0,400,505,$blue,$font, $row['TankLower'] . " ºC") ;
-    // and last update time
-    $updated = DateTime::createFromFormat('Y-m-d H:i:s',$row['Timestamp']) ;
-    imagettftext($im,16,0,100,700,$blue,$font, "Last updated: " . $updated->format("D jS M g:i:s A")) ;
-    // render it
-    imagepng($im) ;
+       global $client ;
+
+      // decode
+      $hwater_data = explode(" ", $message) ;
+      $timestamp = $hwater_data[0] ;
+      $tank_lower = $hwater_data[1] ;
+      $tank_upper = $hwater_data[2] ;
+        
+      // start generating the bitmap...
+      header("Content-type: image/png") ;
+      // template image
+      $im = imagecreatefrompng("cylinder.png") ;
+      // draw on the temperatures
+      $blue = imagecolorallocate($im,42,96,153);
+      $font = "/usr/share/fonts/truetype/freefont/FreeSerif.ttf" ;
+      imagettftext($im,18,0,400,278,$blue,$font, $tank_upper . " ºC") ;
+      imagettftext($im,18,0,400,505,$blue,$font, $tank_lower . " ºC") ;
+      // and last update time
+      $updated = new DateTime();
+      $updated->setTimestamp($timestamp) ;
+      imagettftext($im,16,0,100,700,$blue,$font, "Last updated: " . $updated->format("D jS M g:i:s A")) ;
+      // render it
+      imagepng($im) ;
+       
+      $client->interrupt() ; 
+    } ;
+       
+    // establish connection to mqtt broker
+    $server = "localhost";
+    $port = 1883 ;
+    $client_id = "php-hotwater" ;
+    $client = new MqttClient($server,$port,$client_id);
+    $client->connect();
+    // subscribe to topic - holds raw data from the sensor
+    $client->subscribe('hotwater/data',$on_message) ;
+    // start the poll
+    $client->loop(true);
+    // interrupt from the callback gets us here
+    $client->disconnect();
 ?>

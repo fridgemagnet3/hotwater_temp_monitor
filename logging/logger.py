@@ -3,24 +3,12 @@ import socket
 import time
 import datetime
 import MySQLdb
+import paho.mqtt.subscribe as subscribe
 
 # datalogger for hot water tank temperatures
 #
 # writes tank sensor temperature and external temperature
 # to local MySQL database every 15 minutes
-
-# read tank sensors
-def read_tank_data():
-    sfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sfd.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    listen_address = ('0.0.0.0',52004)
-    sfd.bind(listen_address)
-    packet, address = sfd.recvfrom(256)
-    tank_data = packet.split()
-    utc_timestamp = int(tank_data[0])
-    tank_lower = float(tank_data[1])
-    tank_upper = float(tank_data[2])
-    return utc_timestamp, tank_lower, tank_upper
     
 # read latest weather data from rpi4 broadcast packet
 def read_weather_data():
@@ -53,9 +41,13 @@ def update_db(timestamp,tank_lower,tank_upper,outside_temp):
         print("MySQL Error: %s" % str(e))
 
 while True:
-    tank_utc, tank_lower, tank_upper = read_tank_data()
-    outside_temp = read_weather_data()
-
-    local_timestamp = datetime.datetime.fromtimestamp(tank_utc)
-    update_db(local_timestamp,tank_lower,tank_upper,outside_temp)
+    # fetch next available update from MQTT broker
+    msg = subscribe.simple("hotwater/data", hostname="localhost",client_id="hotwater-logger",retained=False)
+    if msg!=None:
+        tank_data = msg.payload.split()
+        local_timestamp = datetime.datetime.fromtimestamp(int(tank_data[0]))
+        tank_lower = float(tank_data[1])
+        tank_upper = float(tank_data[2])
+        outside_temp = read_weather_data()
+        update_db(local_timestamp,tank_lower,tank_upper,outside_temp)
     time.sleep(15*60)
