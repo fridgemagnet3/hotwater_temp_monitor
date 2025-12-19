@@ -30,7 +30,7 @@
     imagettftext($im,18,0,400,278,$blue,$font, $tank_upper . " ºC") ;
     imagettftext($im,18,0,400,505,$blue,$font, $tank_lower . " ºC") ;
     // and last update time
-    $updated = new DateTimeImmutable();
+    $updated = new DateTime();
     $updated->setTimestamp($timestamp) ;
     imagettftext($im,16,0,100,700,$blue,$font, "Last updated: " . $updated->format("D jS M g:i:s A")) ;
     // render it

@@ -1,0 +1,3 @@
+web/composer*
+web/vendor
+__pycache__
