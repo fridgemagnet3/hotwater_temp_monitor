@@ -9,6 +9,9 @@
 // NTP server
 #define NTP_SERVER "monolith.onasticksoftware.net"
 
+// MQTT broker
+#define MQTT_BROKER NTP_SERVER
+
 // GPIO connected to one-wire bus for temperature sensors
 #define ONE_WIRE_BUS 0
 

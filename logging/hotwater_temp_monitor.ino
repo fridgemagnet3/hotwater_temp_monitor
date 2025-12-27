@@ -11,7 +11,7 @@
 #include <sstream>
 #include <MQTT.h>
 
-// board: ESP-32 S3 supermini
+// board: ESP-32 C3 supermini
 
 // Instantiate the one-wire bus for the temperature sensors
 static OneWire OneWire(ONE_WIRE_BUS) ;
