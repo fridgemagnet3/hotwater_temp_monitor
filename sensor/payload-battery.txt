@@ -1,0 +1,8 @@
+{
+	"name": "Hotwater tank sensor battery voltage",
+	"state_topic": "hotwater/battery",
+	"device_class": "voltage",
+	"platform": "sensor",
+	"unit_of_measurement": "V",
+	"expire_after": 3600
+}
