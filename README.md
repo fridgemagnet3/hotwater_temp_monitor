@@ -2,18 +2,20 @@
 This is a project to try and make more efficient use of our hot water system both in terms of saving money and being more eco-friendly.
 
 ## Overview
-Our hotwater system is typical of many of those incoporated into houses built in the UK between ~1970 and probably late 90s known as an [indirect boiler system](https://www.diydoctor.org.uk/projects/domestic_hot_water_systems.htm). It comprises of a hot water cylinder, gravity fed from a cold water tank in the loft. The tank incorporates a heat exchanger which is then heater via a gas boiler. The tank is (currently) heated twice a day via a timer (which forms part of the hotwater/central heating system).
+Our hotwater system is typical of many of those incoporated into houses built in the UK between ~1970 and probably late 90s known as an [indirect boiler system](https://www.diydoctor.org.uk/projects/domestic_hot_water_systems.htm). It comprises of a hot water cylinder, gravity fed from a cold water tank in the loft. The tank incorporates a heat exchanger which is then heated via a gas boiler. The boiler is (currently) activated twice a day via a timer (which forms part of the hotwater/central heating system).
 
-There are 2 parts to this project. The first involves collecting (logging) temperature data from the hotwater tank then using this to analyse our usage. The second part then uses that data with a view to implementing one or more of the following:
+There are 2 parts to this project. The first involves collecting (logging) temperature data from the hotwater tank & storing it in a database. The second part then uses that data with a view to implementing one or more of the following:
 
-- adjusting our current heating timer to try and only heat water when we need it 
+- adjusting our current heating timer to try to better suite our actual needs 
 - implementing some form of timer override such that we can extend/reduce the heating time dynamically based on external factors
 - using surplus solar energy to heat the tank (via an existing immersion heater), rather than exporting it to the grid
 
 ## Logger
 The hardware for the logger is little more that an ESP-32 (in this case a [C3 supermini](https://www.espboards.dev/esp32/esp32-c3-super-mini/)) connected to a couple of DS18B20 temperature sensors attached to it. There are [plenty of tutorials online which describe how to connect these things up](https://randomnerdtutorials.com/esp32-ds18b20-temperature-arduino-ide/). I've connected one of these to the lower third of the tank (next to the existing thermostat) and the other near the top.
 
-The software for the logger can be found in the [logger](/logging) folder. This comprises an Arduino sketch for the ESP, which publishes the temperature sensor data to an MQTT broker every 15 seconds. There is also a Python script which logs the data to a MySQL/MariaDB database every 15 minutes (the database schema is also included). Along with the tank data, I also store the outside temperature from my [Raspberry Pi weather station](https://github.com/fridgemagnet3/rpi-weatherstation). This was to try and ascertain if this had any bearing on behaviour both in terms of heating and cooling down times. Since the water to the cylinder is fed from a tank in the loft, the water in that will be warmer during the summer months and equally colder during the winter. It may also affect the starting temperature of the water in the heat exchanger itself.
+![PXL_20250831_192953486](https://github.com/user-attachments/assets/0d10c313-1abb-4514-83f0-09d74a27f792)
+
+The software for the logger can be found in the [logger](/logging) folder. This comprises an Arduino sketch for the ESP, which publishes the temperature sensor data to an MQTT broker every 15 seconds. There is also a Python script which then logs the data to a MySQL/MariaDB database every 15 minutes (the database schema is also included). Along with the tank data, I also store the outside temperature from my [Raspberry Pi weather station](https://github.com/fridgemagnet3/rpi-weatherstation). This was to try and ascertain if this had any bearing on behaviour both in terms of heating and cooling down times. Since the water to the cylinder is fed from a tank in the loft, the water in that will be warmer during the summer months and equally colder during the winter. It may also affect the starting temperature of the water in the heat exchanger itself.
 
 That's really all there is to this part, it's then just a case of exporting the data into a spreadsheet for manipulation.
 
