@@ -10,6 +10,15 @@ There are 2 parts to this project. The first involves collecting (logging) tempe
 - implementing some form of timer override such that we can extend/reduce the heating time dynamically based on external factors
 - using surplus solar energy to heat the tank (via an existing immersion heater), rather than exporting it to the grid
 
+Before going much further, I spent a bit of time figuring out what I'd need in order to implement that last bullet point (and to some extent, the 2nd one as well). That being:
+
+1. Real time solar generation metrics for determining when to turn on/off the immersion heater. My [modbus-solis5g](https://github.com/fridgemagnet3/modbus-solis5g) provides that (updates every 20 seconds)
+2. Temperature readings of the hot water tank, that's (essentially) what this project is going to provide
+3. Ability to turn on/off the immersion heater remotely. That would require replacing the existing switch with something like [this Wifi timer switch](https://www.amazon.co.uk/Immersion-Heaters-Electric-Storage-Lighting/dp/B0FH1262CY)
+4. Ability to override the boiler heating the water on those days when we're using spare solar energy to accomplish this. My plan here was to include a relay box in series with the current tank thermostat. This could then be controlled by a spare GPIO on the ESP module.
+
+In conclusion - all doable more or less within the confines of the current system.
+
 ## Logger
 The hardware for the logger is little more that an ESP-32 (in this case a [C3 supermini](https://www.espboards.dev/esp32/esp32-c3-super-mini/)) connected to a couple of DS18B20 temperature sensors attached to it. There are [plenty of tutorials online which describe how to connect these things up](https://randomnerdtutorials.com/esp32-ds18b20-temperature-arduino-ide/). I've connected one of these to the lower third of the tank (next to the existing thermostat) and the other near the top.
 
