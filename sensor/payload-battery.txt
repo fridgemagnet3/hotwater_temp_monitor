@@ -4,5 +4,6 @@
 	"device_class": "voltage",
 	"platform": "sensor",
 	"unit_of_measurement": "V",
-	"expire_after": 3600
+	"expire_after": 3600,
+    "unique_id": "esp_hotwater_batt_voltage"
 }
