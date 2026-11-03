@@ -12,7 +12,7 @@
 #include <MQTT.h>
 #include <esp_sntp.h>
 
-// board: ESP-32 C6 supermini
+// board: ESP-32 C3 supermini (ESP32C3 Dev Module)
 
 // Instantiate the one-wire bus for the temperature sensors
 static OneWire OneWire(ONE_WIRE_BUS) ;
@@ -68,6 +68,9 @@ void setup()
   Serial.println("Connecting to WiFi");
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID1, PWD1);
+  // workaround https://forum.arduino.cc/t/no-wifi-connect-with-esp32-c3-super-mini/1324046/12
+  WiFi.setTxPower(WIFI_POWER_8_5dBm);
+
   // don't spin indefinately here, if we fail to connect after 10 tries, give up for this session
   while ((WiFi.status() != WL_CONNECTED) && Retries)
   {
@@ -86,7 +89,8 @@ void setup()
 
     Serial.println("Connecting to broker");
     MQclient.begin(MQTT_BROKER,Net) ;
-    Connected = MQclient.connect("hotwater-pub") ;
+    //Connected = MQclient.connect("hotwater-pubt") ;
+    Connected = MQclient.connect("hotwater-pubtest") ;
 
     if ( !Connected )
       Serial.println("Failed to connect to MQTT broker");
@@ -113,6 +117,8 @@ void setup()
     // add in timestamp
     SensorBuf << TimeStamp << std::fixed ;
 
+    // allow for sensor to initialise
+    delay(1000) ;
     Sensors.requestTemperatures(); 
     for(int i=0 ; i < NumOfSensors ; i++)
     {
@@ -127,7 +133,7 @@ void setup()
         Serial.printf("Sensor %d: %f ºC\n",i,temperatureC);
 
         // publishh individual sensor readings
-        MQclient.publish(TopicBuf,TempBuf) ;
+        //MQclient.publish(TopicBuf,TempBuf) ;
 
         // append to the sensor buffer
         SensorBuf << " " << temperatureC ;
@@ -135,7 +141,7 @@ void setup()
     }
     Serial.println(SensorBuf.str().c_str());
     // publish everything, retained so we can always grab the latest
-    MQclient.publish("hotwater/data",SensorBuf.str().c_str(),true,0) ;
+    //MQclient.publish("hotwater/data",SensorBuf.str().c_str(),true,0) ;
 
     // report the current battery voltage level
     int AnalogMv = analogReadMilliVolts(BATTERY_ADC);
@@ -143,8 +149,24 @@ void setup()
 
     SensorBuf.str("") ;
     SensorBuf << ((double)AnalogMv/1000.0) ;
-    Serial.println(SensorBuf.str().c_str());
-    MQclient.publish("hotwater/battery",SensorBuf.str().c_str(),true,0) ;
+    Serial.printf("Battery level: %s\n",SensorBuf.str().c_str());
+    //MQclient.publish("hotwater/battery",SensorBuf.str().c_str(),true,0) ;
+
+    // turn on power to the water sensor
+    pinMode(WATER_POWER, OUTPUT);
+    digitalWrite(WATER_POWER, HIGH);
+    delay(10) ;
+    // read sensor
+    int WaterSensor = analogRead(WATER_SENSOR);
+
+    // deactivate power and restore GPIOs
+    digitalWrite(WATER_POWER, LOW); 
+    pinMode(WATER_POWER, INPUT);
+
+    SensorBuf.str("") ;
+    SensorBuf << WaterSensor ;
+    Serial.printf("Water sensor: %d\n",WaterSensor);
+    //MQclient.publish("hotwater/water_leakage",SensorBuf.str().c_str(),true,0) ;
 
     MQclient.disconnect() ;
   }
@@ -166,6 +188,10 @@ void setup()
   else
     delay(2000) ;
   
+  pinMode(ONE_WIRE_BUS, INPUT);
+  Serial.end() ;
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
   digitalWrite(STATUS_LED, LOW);
   esp_sleep_enable_timer_wakeup(SleepTime*1000*1000) ; // expressed in microseconds
   esp_deep_sleep_start();
